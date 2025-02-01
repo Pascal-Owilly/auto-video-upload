@@ -1,0 +1,7 @@
+requests
+yt-dlp
+ffmpeg-python
+openai
+google-api-python-client
+google-auth
+python-dotenv  # If you want to load environment variables from a .env file
