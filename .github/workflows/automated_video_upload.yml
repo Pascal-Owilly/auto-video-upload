@@ -47,7 +47,6 @@ jobs:
         run: python auto_funny_videos/funny_videos.py  # Ensure this step includes your upload logic
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}  # Set your API key as a secret in GitHub
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}    # Set your OpenAI API key as a secret
 
       # Step 7: Check if the video upload was successful and delete the video from the GitHub runner
       - name: Delete video from GitHub runner
