@@ -195,7 +195,7 @@ def process_videos_for_time(time_of_day):
 
 # Scheduling
 def schedule_video_fetch():
-    times = ['07:00:00', '10:00:00', '13:00:00', '16:00:00', '19:00:00']  # Time slots
+    times = ['07:00:00', '10:00:00', '14:10:00', '16:00:00', '19:00:00']  # Time slots
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
 
     if current_time in times:
