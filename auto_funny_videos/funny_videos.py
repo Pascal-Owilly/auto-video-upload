@@ -4,16 +4,17 @@ import yt_dlp
 import glob
 import re
 import random
-from google.auth import exceptions
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 import pickle
 import json
 import datetime
 import time
 from threading import Timer
+from google.auth import exceptions
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+import isodate
 
 # Define the scope and the API service
 SCOPES = [
@@ -28,7 +29,6 @@ PROCESSED_VIDEOS_LOG = 'processed_videos.json'  # Log file to track processed vi
 # List of regions to randomly choose from
 REGIONS = ["US", "IN", "GB", "CA", "FR", "DE", "AU", "JP", "KR"]
 
-# Get credentials from the OAuth 2.0 flow
 def get_credentials():
     creds = None
     if os.path.exists(TOKEN_PICKLE_FILE):
@@ -47,8 +47,6 @@ def get_credentials():
 
     return creds
 
-# Fetch trending videos with refreshed access token from a random region
-# Fetch trending videos with refreshed access token from a random region
 def get_trending_videos(region_code):
     creds = get_credentials()
     if not creds:
@@ -59,10 +57,8 @@ def get_trending_videos(region_code):
     request = youtube.videos().list(part="snippet,contentDetails", chart="mostPopular", regionCode=region_code, maxResults=5)
     response = request.execute()
 
-    # Filter videos that are <= 3 minutes
     trending_videos = []
     for item in response.get("items", []):
-        # Ensure that contentDetails exists
         if "contentDetails" in item:
             duration = item["contentDetails"].get("duration")
             if duration and parse_duration(duration) <= 180:
@@ -70,17 +66,12 @@ def get_trending_videos(region_code):
 
     return trending_videos
 
-
-# Helper function to convert ISO 8601 duration to seconds
 def parse_duration(duration):
-    import isodate
     return isodate.parse_duration(duration).total_seconds()
 
-# Sanitize filenames
 def sanitize_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
 
-# Download video
 def download_video(video_url, title):
     sanitized_title = sanitize_filename(title)
     os.makedirs("downloads", exist_ok=True)
@@ -93,14 +84,11 @@ def download_video(video_url, title):
         ydl.download([video_url])
     return get_downloaded_video_path(title)
 
-# Get correct file path
 def get_downloaded_video_path(title):
     sanitized_title = sanitize_filename(title)
     files = glob.glob(f"downloads/{sanitized_title}.*")
     return files[0] if files else None
 
-# Upload video to YouTube
-# Upload video to YouTube
 def upload_video(file_path, title, description, made_for_kids=None):
     creds = get_credentials()
     if not creds:
@@ -109,18 +97,7 @@ def upload_video(file_path, title, description, made_for_kids=None):
 
     try:
         youtube = build("youtube", "v3", credentials=creds)
-
-        tags = ["trending"]
-        title_keywords = title.lower().split()
-        for keyword in title_keywords:
-            if keyword not in tags:
-                tags.append(keyword)
-
-        description_keywords = description.lower().split()
-        for keyword in description_keywords:
-            if keyword not in tags:
-                tags.append(keyword)
-
+        tags = list(set(["trending"] + title.lower().split() + description.lower().split()))
         body = {
             "snippet": {
                 "title": title,
@@ -132,7 +109,6 @@ def upload_video(file_path, title, description, made_for_kids=None):
                 "privacyStatus": "public",
             }
         }
-
         if made_for_kids is not None:
             body["status"]["madeForKids"] = made_for_kids
 
@@ -146,85 +122,58 @@ def upload_video(file_path, title, description, made_for_kids=None):
     except Exception as e:
         print(f"❌ An error occurred while uploading video: {title}. Error: {str(e)}")
 
-# Log processed videos to avoid re-download/re-upload
 def log_processed_video(video_id):
+    processed_videos = []
     if os.path.exists(PROCESSED_VIDEOS_LOG):
         with open(PROCESSED_VIDEOS_LOG, 'r') as f:
             processed_videos = json.load(f)
-    else:
-        processed_videos = []
-
+    
     processed_videos.append(video_id)
-
     with open(PROCESSED_VIDEOS_LOG, 'w') as f:
         json.dump(processed_videos, f)
 
-# Check if video has already been processed
 def is_video_processed(video_id):
     if os.path.exists(PROCESSED_VIDEOS_LOG):
         with open(PROCESSED_VIDEOS_LOG, 'r') as f:
-            processed_videos = json.load(f)
-        return video_id in processed_videos
+            return video_id in json.load(f)
     return False
 
-# Delete video file after upload
 def delete_video(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
         print(f"🗑️ Deleted video: {file_path}")
 
-# Main Automation Workflow
 def process_videos_for_time(time_of_day):
-    regions = random.sample(REGIONS, 1)  # Picking a random region for each run
-    for region in regions:
-        viral_videos = get_trending_videos(region)
-        if not viral_videos:
-            print(f"❌ No viral videos found for region {region}. Moving to the next region.")
-            continue  # Skip to the next region
+    region = random.choice(REGIONS)
+    viral_videos = get_trending_videos(region)
+    if not viral_videos:
+        print(f"❌ No viral videos found for region {region}.")
+        return
 
-        for video_id, title, _ in viral_videos:
-            if is_video_processed(video_id):
-                print(f"❌ Video {title} has already been processed. Skipping.")
-                continue
+    for video_id, title, _ in viral_videos:
+        if is_video_processed(video_id):
+            print(f"❌ Video {title} already processed. Skipping.")
+            continue
 
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            print(f"📌 Processing video: {title}")
-
-            # Step 1: Download the video
-            video_path = download_video(video_url, title)
-            if not video_path:
-                continue  # Skip if download failed
-
-            # Step 2: Upload the video
-            upload_video(video_path, title, f"{title}")
-            log_processed_video(video_id)  # Log the video as processed
-
-            # Step 3: Delete the video after upload
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        print(f"📌 Processing video: {title}")
+        video_path = download_video(video_url, title)
+        if video_path:
+            upload_video(video_path, title, title)
+            log_processed_video(video_id)
             delete_video(video_path)
-
             print(f"🚀 Successfully uploaded: {title}")
 
-
-# Scheduling
 def schedule_video_fetch():
-    times = ['07:00:00', '10:00:00', '14:10:00', '16:00:00', '19:00:00']  # Time slots
+    times = ['07:00:00', '10:00:00', '14:10:00', '16:00:00', '19:00:00']
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
-
-    # If you want to trigger it once immediately
     process_videos_for_time(current_time)
-
-    # Keep the scheduled fetch behavior
-    if current_time in times:
-        process_videos_for_time(current_time)
-    else:
-        print(f"⏳ Next video fetch will be at one of the scheduled times.")
-    
-    # Set a timer to run the task every day at the same time
+    print("⏳ Next video fetch scheduled.")
     for t in times:
-        target_time = datetime.datetime.strptime(t, "%H:%M:%S")
-        now = datetime.datetime.now()
+        target_time = datetime.datetime.strptime(t, "%H:%M:%S").time()
+        now = datetime.datetime.now().time()
         if target_time > now:
-            delta = target_time - now
+            delta = datetime.datetime.combine(datetime.date.today(), target_time) - datetime.datetime.now()
             Timer(delta.total_seconds(), schedule_video_fetch).start()
 
 if __name__ == "__main__":
