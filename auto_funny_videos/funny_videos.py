@@ -48,6 +48,7 @@ def get_credentials():
     return creds
 
 # Fetch trending videos with refreshed access token from a random region
+# Fetch trending videos with refreshed access token from a random region
 def get_trending_videos(region_code):
     creds = get_credentials()
     if not creds:
@@ -55,15 +56,20 @@ def get_trending_videos(region_code):
         return []
 
     youtube = build("youtube", "v3", credentials=creds)
-    request = youtube.videos().list(part="snippet", chart="mostPopular", regionCode=region_code, maxResults=5)
+    request = youtube.videos().list(part="snippet,contentDetails", chart="mostPopular", regionCode=region_code, maxResults=5)
     response = request.execute()
 
     # Filter videos that are <= 3 minutes
-    trending_videos = [(item["id"], item["snippet"]["title"], item["snippet"]["duration"])
-                       for item in response.get("items", [])
-                       if "duration" in item["contentDetails"] and parse_duration(item["contentDetails"]["duration"]) <= 180]
+    trending_videos = []
+    for item in response.get("items", []):
+        # Ensure that contentDetails exists
+        if "contentDetails" in item:
+            duration = item["contentDetails"].get("duration")
+            if duration and parse_duration(duration) <= 180:
+                trending_videos.append((item["id"], item["snippet"]["title"], duration))
 
     return trending_videos
+
 
 # Helper function to convert ISO 8601 duration to seconds
 def parse_duration(duration):
@@ -169,39 +175,45 @@ def delete_video(file_path):
 
 # Main Automation Workflow
 def process_videos_for_time(time_of_day):
-    regions = random.sample(REGIONS, 1)
+    regions = random.sample(REGIONS, 1)  # Picking a random region for each run
     for region in regions:
         viral_videos = get_trending_videos(region)
-        if viral_videos:
-            for video_id, title, _ in viral_videos:
-                if is_video_processed(video_id):
-                    print(f"❌ Video {title} has already been processed. Skipping.")
-                    continue
+        if not viral_videos:
+            print(f"❌ No viral videos found for region {region}. Moving to the next region.")
+            continue  # Skip to the next region
 
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-                print(f"📌 Processing video: {title}")
+        for video_id, title, _ in viral_videos:
+            if is_video_processed(video_id):
+                print(f"❌ Video {title} has already been processed. Skipping.")
+                continue
 
-                # Step 1: Download the video
-                video_path = download_video(video_url, title)
-                if not video_path:
-                    continue  # Skip if download failed
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            print(f"📌 Processing video: {title}")
 
-                # Step 2: Upload the video
-                upload_video(video_path, title, f"{title}")
-                log_processed_video(video_id)  # Log the video as processed
+            # Step 1: Download the video
+            video_path = download_video(video_url, title)
+            if not video_path:
+                continue  # Skip if download failed
 
-                # Step 3: Delete the video after upload
-                delete_video(video_path)
+            # Step 2: Upload the video
+            upload_video(video_path, title, f"{title}")
+            log_processed_video(video_id)  # Log the video as processed
 
-                print(f"🚀 Successfully uploaded: {title}")
-        else:
-            print(f"❌ No viral videos found for region {region}.")
+            # Step 3: Delete the video after upload
+            delete_video(video_path)
+
+            print(f"🚀 Successfully uploaded: {title}")
+
 
 # Scheduling
 def schedule_video_fetch():
     times = ['07:00:00', '10:00:00', '14:10:00', '16:00:00', '19:00:00']  # Time slots
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
 
+    # If you want to trigger it once immediately
+    process_videos_for_time(current_time)
+
+    # Keep the scheduled fetch behavior
     if current_time in times:
         process_videos_for_time(current_time)
     else:
