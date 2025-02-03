@@ -5,7 +5,7 @@ on:
     - cron: '0 0 * * *'  # Runs every day at midnight UTC
   push:
     branches:
-      - main
+      - main2
 
 jobs:
   build:
@@ -31,16 +31,11 @@ jobs:
           sudo apt install -y ffmpeg
           pip install yt-dlp
 
-      - name: Create client_secrets.json
-        run: echo "$CLIENT_SECRETS" > auto_funny_videos/client_secrets.json
-        shell: bash
-        env:
-          CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS }}
-
       - name: Run the video automation script
         run: python auto_funny_videos/funny_videos.py
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS }}  # Pass the secret directly as an environment variable
 
       - name: Delete video from GitHub runner
         run: |
