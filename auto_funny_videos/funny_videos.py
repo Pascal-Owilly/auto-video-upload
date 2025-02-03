@@ -94,47 +94,51 @@ def get_downloaded_video_path(title):
     return files[0] if files else None
 
 # Upload video to YouTube
+# Upload video to YouTube
 def upload_video(file_path, title, description, made_for_kids=None):
     creds = get_credentials()
     if not creds:
         print("❌ Failed to authenticate with Google.")
         return
 
-    youtube = build("youtube", "v3", credentials=creds)
+    try:
+        youtube = build("youtube", "v3", credentials=creds)
 
-    tags = ["trending"]
-    title_keywords = title.lower().split()
-    for keyword in title_keywords:
-        if keyword not in tags:
-            tags.append(keyword)
+        tags = ["trending"]
+        title_keywords = title.lower().split()
+        for keyword in title_keywords:
+            if keyword not in tags:
+                tags.append(keyword)
 
-    description_keywords = description.lower().split()
-    for keyword in description_keywords:
-        if keyword not in tags:
-            tags.append(keyword)
+        description_keywords = description.lower().split()
+        for keyword in description_keywords:
+            if keyword not in tags:
+                tags.append(keyword)
 
-    body = {
-        "snippet": {
-            "title": title,
-            "description": description,
-            "tags": tags,
-            "categoryId": "23"
-        },
-        "status": {
-            "privacyStatus": "public",
+        body = {
+            "snippet": {
+                "title": title,
+                "description": description,
+                "tags": tags,
+                "categoryId": "23"
+            },
+            "status": {
+                "privacyStatus": "public",
+            }
         }
-    }
 
-    if made_for_kids is not None:
-        body["status"]["madeForKids"] = made_for_kids
+        if made_for_kids is not None:
+            body["status"]["madeForKids"] = made_for_kids
 
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body=body,
-        media_body=MediaFileUpload(file_path, resumable=True)
-    )
-    request.execute()
-    print(f"✅ Uploaded video: {title}")
+        request = youtube.videos().insert(
+            part="snippet,status",
+            body=body,
+            media_body=MediaFileUpload(file_path, resumable=True)
+        )
+        request.execute()
+        print(f"✅ Uploaded video: {title}")
+    except Exception as e:
+        print(f"❌ An error occurred while uploading video: {title}. Error: {str(e)}")
 
 # Log processed videos to avoid re-download/re-upload
 def log_processed_video(video_id):
