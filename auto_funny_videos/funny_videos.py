@@ -117,10 +117,12 @@ def upload_video(file_path, title, description, made_for_kids=None):
             body=body,
             media_body=MediaFileUpload(file_path, resumable=True)
         )
-        request.execute()
+        response = request.execute()
         print(f"✅ Uploaded video: {title}")
+        print(f"📌 API Response: {json.dumps(response, indent=4)}")  # Print response
     except Exception as e:
         print(f"❌ An error occurred while uploading video: {title}. Error: {str(e)}")
+
 
 def log_processed_video(video_id):
     processed_videos = []
