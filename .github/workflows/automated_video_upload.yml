@@ -1,0 +1,48 @@
+name: Automated Video Upload
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
+  push:
+    branches:
+      - main2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Runs on the latest Ubuntu runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r auto_funny_videos/requirements.txt
+
+      - name: Install yt-dlp and ffmpeg
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg
+          pip install yt-dlp
+
+      - name: Run the video automation script
+        run: python auto_funny_videos/funny_videos.py
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS }}  # Pass the secret directly as an environment variable
+
+      - name: Delete video from GitHub runner
+        run: |
+          if [ -f "downloads/edited_video.mp4" ]; then
+            echo "Deleting video file from GitHub runner..."
+            rm "downloads/edited_video.mp4"
+          else
+            echo "No video file found to delete."
+          fi
+
