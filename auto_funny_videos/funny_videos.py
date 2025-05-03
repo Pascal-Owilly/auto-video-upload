@@ -16,17 +16,24 @@ from googleapiclient.http import MediaFileUpload
 from moviepy import *
 import isodate
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly"
 ]
 
-CLIENT_SECRET_FILE = 'client_secrets.json'
-TOKEN_PICKLE_FILE = 'token.pickle'
-PROCESSED_VIDEOS_LOG = 'processed_videos.json'
-REGIONS = ["US", "IN", "GB", "CA", "FR", "DE", "AU", "JP", "KR"]
-DEESEEK_API_KEY = 'sk-525b280b70bc4d4e8294beee9a391f85'
-
+CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
+AUTH_URI = os.getenv("GOOGLE_AUTH_URI")
+TOKEN_URI = os.getenv("GOOGLE_TOKEN_URI")
+CERT_URL = os.getenv("GOOGLE_CERT_URL")
+REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+DEESEEK_API_KEY = os.getenv("DEESEEK_API_KEY")
 
 def get_credentials():
     creds = None
