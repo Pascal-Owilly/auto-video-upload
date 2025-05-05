@@ -3,6 +3,7 @@ anyio==4.8.0
 cachetools==5.5.1
 certifi==2025.1.31
 charset-normalizer==3.4.1
+decorator==5.2.1
 distro==1.9.0
 exceptiongroup==1.2.2
 ffmpeg-python==0.2.0
@@ -18,10 +19,16 @@ httpcore==1.0.7
 httplib2==0.22.0
 httpx==0.28.1
 idna==3.10
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
 isodate==0.7.2
 jiter==0.8.2
+moviepy==2.1.2
+numpy==2.2.5
 oauthlib==3.2.2
 openai==1.61.0
+pillow==10.4.0
+proglog==0.1.11
 proto-plus==1.26.0
 protobuf==5.29.3
 pyasn1==0.6.1
